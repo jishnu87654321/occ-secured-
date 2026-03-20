@@ -4,8 +4,32 @@ import multer from "multer";
 import { env } from "./env";
 import { HttpError } from "../lib/httpError";
 
-const uploadDir = path.resolve(process.cwd(), env.uploadDir);
-fs.mkdirSync(uploadDir, { recursive: true });
+const requestedUploadDir = path.resolve(process.cwd(), env.uploadDir);
+const fallbackUploadDir = path.resolve(process.cwd(), "./uploads");
+
+function ensureWritableUploadDir(targetDir: string) {
+  fs.mkdirSync(targetDir, { recursive: true });
+  fs.accessSync(targetDir, fs.constants.W_OK);
+  return targetDir;
+}
+
+function resolveUploadDir() {
+  try {
+    return ensureWritableUploadDir(requestedUploadDir);
+  } catch (error) {
+    if (requestedUploadDir !== fallbackUploadDir) {
+      console.warn(
+        `Upload directory "${requestedUploadDir}" is not writable. Falling back to "${fallbackUploadDir}".`,
+        error
+      );
+      return ensureWritableUploadDir(fallbackUploadDir);
+    }
+
+    throw error;
+  }
+}
+
+const uploadDir = resolveUploadDir();
 
 const allowedMimeToExt = new Map<string, string>([
   ["image/png", ".png"],
