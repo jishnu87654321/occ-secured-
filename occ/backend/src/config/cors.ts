@@ -6,6 +6,19 @@ const allowedOrigins = env.corsOrigin
   .map((value) => value.trim())
   .filter(Boolean);
 
+function isOriginAllowed(origin: string) {
+  if (allowedOrigins.includes(origin)) {
+    return true;
+  }
+
+  const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+  if (isVercelPreview && allowedOrigins.some((value) => value.endsWith(".vercel.app"))) {
+    return true;
+  }
+
+  return false;
+}
+
 export const corsOptions: CorsOptions = {
   origin(origin, callback) {
     if (!origin) {
@@ -13,7 +26,7 @@ export const corsOptions: CorsOptions = {
       return;
     }
 
-    if (allowedOrigins.includes(origin)) {
+    if (isOriginAllowed(origin)) {
       callback(null, true);
       return;
     }

@@ -1,6 +1,17 @@
 import axios, { AxiosHeaders } from 'axios';
 
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+function normalizeApiBase(url?: string) {
+  const fallback = 'http://localhost:5000/api';
+  const value = (url || fallback).trim().replace(/\/+$/, '');
+
+  if (value.endsWith('/api')) {
+    return value;
+  }
+
+  return `${value}/api`;
+}
+
+export const API_BASE = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
 
 const API_URL = API_BASE;
 
