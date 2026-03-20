@@ -60,6 +60,22 @@ function healthPayload() {
   };
 }
 
+app.get("/", (_req, res) => {
+  res.json({
+    success: true,
+    message: "OCC backend is running",
+    data: {
+      service: "occ-backend",
+      docsHint: "Use /api or /api/v1 endpoints for application requests",
+      health: "/health"
+    }
+  });
+});
+
+app.head("/", (_req, res) => {
+  res.status(200).end();
+});
+
 app.get("/health", (_req, res) => {
   res.json(healthPayload());
 });
