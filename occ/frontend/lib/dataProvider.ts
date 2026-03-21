@@ -26,6 +26,8 @@ export interface Post {
   timestamp: string;
   likes: number;
   comments: Comment[];
+  isLiked?: boolean;
+  commentsCount?: number;
 }
 
 export interface Club {

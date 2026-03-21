@@ -1,21 +1,24 @@
 "use client";
 
-import { Post } from "@/lib/dataProvider";
+import { Post, Comment } from "@/lib/dataProvider";
+import { likePostOnApi, unlikePostOnApi, commentOnPostOnApi, listCommentsOnApi } from "@/lib/postApi";
 import { MessageSquare, ArrowBigUp, Share2, Expand, MoreHorizontal, Edit, Trash2, Flag, X } from "lucide-react";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { memo, useState, useCallback, useRef, useEffect } from "react";
 import { useUser } from "@/context/UserContext";
 import { useRouter, usePathname } from "next/navigation";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import ModalShell from "@/components/ModalShell";
 
-export default function PostCard({ post }: { post: Post }) {
+function PostCard({ post }: { post: Post }) {
   const { user, deletePost, updatePost, isLoggedIn } = useUser();
   const router = useRouter();
   const pathname = usePathname();
-  const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(post.likes);
-  const [showComments, setShowComments] = useState(false);
-  const [comments, setComments] = useState(post.comments);
+  const [liked, setLiked] = useState<boolean>(!!post.isLiked);
+  const [likesCount, setLikesCount] = useState<number>(post.likes);
+  const [showComments, setShowComments] = useState<boolean>(false);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [localCommentsCount, setLocalCommentsCount] = useState<number>(post.commentsCount ?? 0);
+  const [commentsLoaded, setCommentsLoaded] = useState<boolean>(false);
   const [newComment, setNewComment] = useState("");
   const [showMenu, setShowMenu] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -55,13 +58,39 @@ export default function PostCard({ post }: { post: Post }) {
     };
   }, [showMenu]);
 
-  const toggleLike = () => {
+  const toggleLike = async () => {
     if (!isLoggedIn) {
       redirectToLogin();
       return;
     }
-    setLiked(!liked);
-    setLikesCount(liked ? likesCount - 1 : likesCount + 1);
+    const newLikedState = !liked;
+    const newLikesCount = newLikedState ? likesCount + 1 : likesCount - 1;
+    
+    setLiked(newLikedState);
+    setLikesCount(newLikesCount);
+
+    updatePost({
+      ...post,
+      isLiked: newLikedState,
+      likes: newLikesCount
+    });
+
+    try {
+      if (newLikedState) {
+        await likePostOnApi(post.id);
+      } else {
+        await unlikePostOnApi(post.id);
+      }
+    } catch (e) {
+      console.error("Failed to toggle like", e);
+      setLiked(!newLikedState);
+      setLikesCount(likesCount);
+      updatePost({
+        ...post,
+        isLiked: !newLikedState,
+        likes: likesCount
+      });
+    }
   };
 
   const copyToClipboard = useCallback(async (value: string) => {
@@ -107,22 +136,50 @@ export default function PostCard({ post }: { post: Post }) {
     }
   };
 
-  const handleAddComment = useCallback(() => {
+  const handleAddComment = useCallback(async () => {
     if (!isLoggedIn) {
       redirectToLogin();
       return;
     }
     if (!newComment.trim() || !user) return;
     
-    const comment = {
-      id: Date.now().toString(),
+    const tempId = Date.now().toString();
+    const tempComment: Comment = {
+      id: tempId,
       author: user.name,
       content: newComment.trim()
     };
     
-    setComments([...comments, comment]);
+    setComments([...comments, tempComment]);
+    setLocalCommentsCount(prev => prev + 1);
     setNewComment("");
-  }, [newComment, user, comments, isLoggedIn, redirectToLogin]);
+
+    updatePost({
+      ...post,
+      commentsCount: localCommentsCount + 1
+    });
+
+    try {
+      await commentOnPostOnApi(post.id, tempComment.content);
+    } catch (e) {
+      console.error("Failed to post comment", e);
+      setComments(comments.filter(c => c.id !== tempId));
+      setLocalCommentsCount(prev => prev - 1);
+      updatePost({
+        ...post,
+        commentsCount: localCommentsCount
+      });
+    }
+  }, [newComment, user, comments, isLoggedIn, redirectToLogin, localCommentsCount, post, updatePost]);
+
+  useEffect(() => {
+    if (showComments && !commentsLoaded) {
+      listCommentsOnApi(post.id).then((data: Comment[]) => {
+        setComments(data);
+        setCommentsLoaded(true);
+      }).catch(e => console.error("Failed to load comments", e));
+    }
+  }, [showComments, commentsLoaded, post.id]);
 
   const handleMenuToggle = useCallback(() => {
     setShowMenu(!showMenu);
@@ -303,7 +360,7 @@ export default function PostCard({ post }: { post: Post }) {
           }}
           className={`flex items-center gap-2 font-black uppercase text-sm px-4 py-2 border-2 border-black transition-all bg-brutal-gray text-black shadow-[2px_2px_0_0_#000] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] ${showComments ? 'bg-black text-white' : ''}`}
         >
-          <MessageSquare className="w-5 h-5" /> {comments.length}
+          <MessageSquare className="w-5 h-5" /> {localCommentsCount}
         </button>
 
         <button 
@@ -318,7 +375,9 @@ export default function PostCard({ post }: { post: Post }) {
       {showComments && (
         <div className="mt-4 pt-6 bg-white border-t-4 border-black -mx-6 -mb-6 md:-mx-8 md:-mb-8 p-6 md:p-8 space-y-4 animate-in slide-in-from-top-4 duration-300">
           <h4 className="text-sm font-black uppercase text-gray-500 mb-2">Discussion</h4>
-          {comments.length === 0 ? (
+          {!commentsLoaded ? (
+            <p className="font-bold text-gray-400 italic">Loading comments...</p>
+          ) : comments.length === 0 ? (
             <p className="font-bold text-gray-400 italic">No comments yet. Start the conversation!</p>
           ) : (
             comments.map(comment => (
@@ -334,7 +393,7 @@ export default function PostCard({ post }: { post: Post }) {
               placeholder="Add your take..." 
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && handleAddComment()}
+              onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
               className="flex-1 bg-white border-2 border-black p-3 font-bold text-black focus:outline-none focus:shadow-[3px_3px_0_0_#1d2cf3] transition-all"
             />
             <button 
@@ -492,3 +551,5 @@ export default function PostCard({ post }: { post: Post }) {
     </div>
   );
 }
+
+export default memo(PostCard);

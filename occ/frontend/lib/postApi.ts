@@ -8,6 +8,7 @@ type ApiPost = {
   createdAt?: string;
   likesCount?: number;
   commentsCount?: number;
+  isLikedByCurrentUser?: boolean;
   author?: {
     profile?: {
       displayName?: string | null;
@@ -84,6 +85,8 @@ export const toPostRecord = (post: ApiPost): Post => ({
   timestamp: relativeTime(post.createdAt),
   likes: post.likesCount ?? 0,
   comments: [],
+  commentsCount: post.commentsCount ?? 0,
+  isLiked: !!post.isLikedByCurrentUser,
 });
 
 function buildPostFormData(input: PostUpsertInput) {
@@ -156,4 +159,26 @@ export async function updatePostOnApi(postId: string, input: PostUpsertInput) {
 
 export async function deletePostOnApi(postId: string) {
   await api.delete(`/posts/${postId}`);
+}
+
+export async function likePostOnApi(postId: string) {
+  await api.post(`/posts/${postId}/like`);
+}
+
+export async function unlikePostOnApi(postId: string) {
+  await api.delete(`/posts/${postId}/like`);
+}
+
+export async function commentOnPostOnApi(postId: string, content: string) {
+  const response = await api.post(`/posts/${postId}/comments`, { content });
+  return response.data?.data?.comment;
+}
+
+export async function listCommentsOnApi(postId: string, page = 1) {
+  const response = await api.get(`/posts/${postId}/comments`, { params: { page, limit: 100 } });
+  return response.data?.data?.items?.map((apiComment: any) => ({
+    id: apiComment.id,
+    author: apiComment.author?.profile?.displayName || "Anonymous",
+    content: apiComment.content
+  })) || [];
 }
