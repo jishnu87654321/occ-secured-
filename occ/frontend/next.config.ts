@@ -3,11 +3,16 @@ import path from "path";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  outputFileTracingRoot: path.join(__dirname),
-  turbopack: {
-    root: path.join(__dirname),
+  webpack: (config) => {
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    };
+    return config;
   },
-
+  output: "standalone",
 };
 
 export default nextConfig;
