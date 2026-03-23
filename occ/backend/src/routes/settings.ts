@@ -31,9 +31,13 @@ router.patch(
   requireAuth,
   validate(settingsSchema),
   asyncHandler(async (req, res) => {
+    const settingsData = {
+      ...(req.body.themePreference !== undefined && { themePreference: req.body.themePreference }),
+      ...(req.body.notificationPreferences !== undefined && { notificationPreferences: req.body.notificationPreferences })
+    };
     const settings = await prisma.userSetting.upsert({
       where: { userId: req.user!.id },
-      update: req.body,
+      update: settingsData,
       create: {
         userId: req.user!.id,
         themePreference: req.body.themePreference || "system",
@@ -55,9 +59,16 @@ router.patch(
   requireAuth,
   validate(privacySchema),
   asyncHandler(async (req, res) => {
+    // P1 FIX: Explicit allowlist — never pass raw req.body to Prisma
+    const privacyData = {
+      ...(req.body.profileVisibility !== undefined && { profileVisibility: req.body.profileVisibility }),
+      ...(req.body.showUniversity !== undefined && { showUniversity: req.body.showUniversity }),
+      ...(req.body.showClubMembership !== undefined && { showClubMembership: req.body.showClubMembership }),
+      ...(req.body.postVisibilityDefault !== undefined && { postVisibilityDefault: req.body.postVisibilityDefault })
+    };
     const privacy = await prisma.privacySetting.upsert({
       where: { userId: req.user!.id },
-      update: req.body,
+      update: privacyData,
       create: {
         userId: req.user!.id,
         profileVisibility: req.body.profileVisibility || "PUBLIC",

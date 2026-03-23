@@ -118,7 +118,7 @@ async function getClubVisibilityContext(clubIdentifier: string, user: Express.Re
 
   const isAdmin = !!user && ["PLATFORM_ADMIN", "SUPER_ADMIN"].includes(user.role);
   const isOwner = !!user && club.ownerId === user.id;
-  const isMember = !!user && !!club.members?.some((member) => member.userId === user.id);
+  const isMember = !!user && !!(club as any).members?.some((member: any) => member.userId === user.id);
 
   return { club, isAdmin, isOwner, isMember };
 }
@@ -229,7 +229,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const club = await prisma.club.findFirst({
       where: {
-        OR: [{ id: req.params.id }, { slug: req.params.id }]
+        OR: [{ id: req.params.id as string }, { slug: req.params.id as string }]
       },
       include: {
         category: true,
@@ -254,7 +254,7 @@ router.patch(
   ]),
   validate(clubUpdateSchema),
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     await ensureClubOwner(resolvedClubId, req.user!);
     const files = req.files as Record<string, Express.Multer.File[]> | undefined;
     const club = await prisma.club.update({
@@ -290,7 +290,7 @@ router.delete(
   "/clubs/:id",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     await ensureClubOwner(resolvedClubId, req.user!);
     await prisma.club.delete({ where: { id: resolvedClubId } });
     return successResponse(res, "Club deleted successfully", {});
@@ -301,7 +301,7 @@ router.post(
   "/clubs/:id/join",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     const club = await prisma.club.findUnique({ where: { id: resolvedClubId } });
     if (!club) throw new HttpError(404, "Club not found");
     if (club.visibility !== "PUBLIC") throw new HttpError(400, "This club requires an approval request");
@@ -324,7 +324,7 @@ router.post(
   "/clubs/:id/request",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     const club = await prisma.club.findUnique({ where: { id: resolvedClubId } });
     if (!club) throw new HttpError(404, "Club not found");
     if (club.visibility === "PUBLIC") throw new HttpError(400, "Public clubs can be joined directly");
@@ -346,7 +346,7 @@ router.get(
   "/clubs/:id/members",
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     const members = await prisma.clubMember.findMany({
       where: { clubId: resolvedClubId },
       include: {
@@ -377,7 +377,7 @@ router.patch(
   requireAuth,
   validate(memberUpdateSchema),
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     await ensureClubOwner(resolvedClubId, req.user!);
     const member = await prisma.clubMember.findFirst({
       where: {
@@ -401,7 +401,7 @@ router.delete(
   requireAuth,
   asyncHandler(async (req, res) => {
     const isSelf = req.params.memberId === req.user!.id;
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     const club = await prisma.club.findUnique({ where: { id: resolvedClubId } });
     if (!club) throw new HttpError(404, "Club not found");
     if (club.ownerId === req.user!.id && isSelf) {
@@ -427,7 +427,7 @@ router.get(
   "/clubs/:id/posts",
   optionalAuth,
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     const { club, isAdmin, isOwner, isMember } = await getClubVisibilityContext(resolvedClubId, req.user);
     if (club.visibility === "PRIVATE" && !isAdmin && !isOwner && !isMember) {
       throw new HttpError(403, "You do not have permission to view this club's posts");
@@ -479,7 +479,7 @@ router.get(
   "/clubs/:id/requests",
   requireAuth,
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     await ensureClubOwner(resolvedClubId, req.user!);
     const requests = await prisma.clubJoinRequest.findMany({
       where: { clubId: resolvedClubId },
@@ -506,7 +506,7 @@ router.patch(
   requireAuth,
   validate(joinRequestActionSchema),
   asyncHandler(async (req, res) => {
-    const resolvedClubId = await getResolvedClubId(req.params.id);
+    const resolvedClubId = await getResolvedClubId(req.params.id as string);
     await ensureClubOwner(resolvedClubId, req.user!);
     const request = await prisma.clubJoinRequest.findFirst({
       where: { id: req.params.requestId, clubId: resolvedClubId }

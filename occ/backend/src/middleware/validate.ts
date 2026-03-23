@@ -7,7 +7,7 @@ export function validate<T extends AnyZodObject>(schema: T, target: "body" | "qu
     if (!result.success) {
       return next(result.error);
     }
-    Object.assign(req[target], result.data);
+    (req as any)[target] = result.data;
     next();
   };
 }

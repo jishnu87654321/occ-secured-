@@ -9,6 +9,7 @@ import { requestClubJoinOnApi } from "@/lib/clubApi";
 import { createPostOnApi, deletePostOnApi, listFeedFromApi, type PostUpsertInput, updatePostOnApi } from "@/lib/postApi";
 import { fetchCurrentUser, loginWithPassword, type SessionUser } from "@/lib/authApi";
 
+
 interface User extends SessionUser {}
 
 interface UserContextType {
@@ -93,17 +94,32 @@ const readStoredValue = <T,>(key: string, fallback: T, normalize?: (value: T) =>
 };
 
 export function UserProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(() =>
-    readStoredValue<User | null>("occ-user", null, (value) => (value ? normalizeUserRecord(value) : null)),
-  );
-  const [posts, setPosts] = useState<Post[]>(() =>
-    readStoredValue<Post[]>("occ-posts", [], (value) => value.map(normalizePostRecord)),
-  );
-  const [clubs, setClubs] = useState<ClubRecord[]>(() =>
-    readStoredValue<ClubRecord[]>("occ-clubs", [], (value) => value.map(normalizeClubRecord)),
-  );
-  const [memberships, setMemberships] = useState<string[]>(() => readStoredValue<string[]>("occ-memberships", []));
+  const [user, setUser] = useState<User | null>(null);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [clubs, setClubs] = useState<ClubRecord[]>([]);
+  const [memberships, setMemberships] = useState<string[]>([]);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // Initial load from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedUser = readStoredValue<User | null>("occ-user", null, (value) => (value ? normalizeUserRecord(value) : null));
+    const storedPosts = readStoredValue<Post[]>("occ-posts", [], (value) => value.map(normalizePostRecord));
+    const storedClubs = readStoredValue<ClubRecord[]>("occ-clubs", [], (value) => value.map(normalizeClubRecord));
+    const storedMemberships = readStoredValue<string[]>("occ-memberships", []);
+
+    if (storedUser) setUser(storedUser);
+    if (storedPosts.length > 0) setPosts(storedPosts);
+    if (storedClubs.length > 0) setClubs(storedClubs);
+    if (storedMemberships.length > 0) setMemberships(storedMemberships);
+    
+    // If no user in storage, we can stop loading early. 
+    // Otherwise bootstrapUser effect will handle completion.
+    if (!storedUser && !localStorage.getItem("token")) {
+      setIsAuthLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -190,9 +206,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
         );
       }
 
+      const previousIdsSet = new Set(previousIds);
+      const incomingIdsSet = new Set(incomingIds);
+
       const orderedIds = preserveOrder
-        ? [...previousIds, ...incomingIds.filter((id) => !previousIds.includes(id))]
-        : [...incomingIds, ...previousIds.filter((id) => !incomingIds.includes(id))];
+        ? [...previousIds, ...incomingIds.filter((id) => !previousIdsSet.has(id))]
+        : [...incomingIds, ...previousIds.filter((id) => !incomingIdsSet.has(id))];
 
       return orderedIds.map((id) => map.get(id)!).filter(Boolean);
     });
@@ -234,25 +253,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
   }, [mergeClubs, user]);
 
-  useEffect(() => {
-    let isActive = true;
-
-    const loadRemotePosts = async () => {
-      try {
-        const feed = await listFeedFromApi(1, 20);
-        if (!isActive) return;
-        setPosts(feed.items.map(normalizePostRecord));
-      } catch {
-        // Keep local data when the API is unavailable.
-      }
-    };
-
-    loadRemotePosts();
-
-    return () => {
-      isActive = false;
-    };
-  }, []);
+  // Note: loadRemotePosts was removed from here because the FeedPage and Home page 
+  // already handle their own specific post hydration. This prevents redundant high-latency
+  // API calls during application startup and navigation.
 
   useEffect(() => {
     localStorage.setItem("occ-clubs", JSON.stringify(clubs));
@@ -278,7 +281,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     return nextUser;
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");

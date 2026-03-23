@@ -47,7 +47,7 @@ async function main() {
     { name: "auth login route", url: `${baseUrl}/api/v1/auth/login`, expect: 404, method: "GET" },
     { name: "feed route", url: `${baseUrl}/api/v1/feed`, expect: 200 },
     { name: "clubs route", url: `${baseUrl}/api/v1/clubs`, expect: 200 },
-    { name: "admin route protected", url: `${baseUrl}/api/v1/admin/dashboard`, expect: 401 }
+    { name: "admin route protected", url: `${baseUrl}/api/v1/occ-gate-842/dashboard`, expect: 401 }
   ];
 
   for (const check of checks) {

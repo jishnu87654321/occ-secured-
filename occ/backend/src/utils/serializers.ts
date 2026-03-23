@@ -46,7 +46,7 @@ export function serializeUser(user: UserWithRelations | null | undefined, view: 
   return {
     id: user.id,
     email: isPublic ? undefined : user.email,
-    role: user.role,
+    role: isPublic ? undefined : user.role,
     status: user.status,
     isActive: user.isActive,
     createdAt: user.createdAt,

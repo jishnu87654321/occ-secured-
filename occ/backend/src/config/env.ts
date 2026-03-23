@@ -17,7 +17,12 @@ const envSchema = z.object({
   APP_URL: z.string().url().default("http://localhost:3000"),
   ADMIN_EMAIL: z.string().email(),
   ADMIN_PASSWORD: z.string().min(8),
-  UPLOAD_DIR: z.string().default("./uploads")
+  UPLOAD_DIR: z.string().default("./uploads"),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  SMTP_FROM: z.string().default("noreply@offcampusclub.com")
 });
 
 const parsed = envSchema.parse(process.env);
@@ -52,7 +57,12 @@ export const env = {
   appUrl: parsed.APP_URL,
   adminEmail: parsed.ADMIN_EMAIL,
   adminPassword: parsed.ADMIN_PASSWORD,
-  uploadDir: parsed.UPLOAD_DIR
+  uploadDir: parsed.UPLOAD_DIR,
+  smtpHost: parsed.SMTP_HOST,
+  smtpPort: parsed.SMTP_PORT,
+  smtpUser: parsed.SMTP_USER,
+  smtpPass: parsed.SMTP_PASS,
+  smtpFrom: parsed.SMTP_FROM
 };
 
 export type AppEnv = typeof env;

@@ -141,7 +141,6 @@ router.get(
       prisma.user.findMany({
         where: {
           OR: [
-            { email: { contains: query, mode: "insensitive" } },
             { profile: { is: { displayName: { contains: query, mode: "insensitive" } } } },
             { profile: { is: { university: { contains: query, mode: "insensitive" } } } }
           ]

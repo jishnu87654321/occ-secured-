@@ -11,7 +11,7 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
       message: "Validation failed",
       errors: error.issues.map((issue) => ({
         field: issue.path.join("."),
-        message: issue.message
+        message: "Invalid input format"
       }))
     });
   }
@@ -25,11 +25,28 @@ export function errorHandler(error: unknown, _req: Request, res: Response, _next
     });
   }
 
-  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+  if (error instanceof Prisma.PrismaClientValidationError) {
     logger.error(error);
     return res.status(400).json({
       success: false,
-      message: error.message,
+      message: "Invalid request data",
+      errors: []
+    });
+  }
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    logger.error(error);
+    // P2 FIX: Map Prisma error codes to generic messages — never expose raw error.message
+    const prismaMessages: Record<string, string> = {
+      P2002: "A record with this value already exists",
+      P2003: "Related record not found",
+      P2025: "Record not found",
+      P2014: "This change would violate a required relation",
+      P2016: "Query interpretation error"
+    };
+    return res.status(400).json({
+      success: false,
+      message: prismaMessages[error.code] || "A database error occurred",
       errors: []
     });
   }

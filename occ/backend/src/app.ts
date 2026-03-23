@@ -2,6 +2,7 @@ import fs from "fs";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import compression from "compression";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import path from "path";
@@ -23,10 +24,11 @@ import searchRoutes from "./routes/search";
 fs.mkdirSync(uploadDir, { recursive: true });
 
 export const app = express();
-
+app.disable("x-powered-by");
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(compression());
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,

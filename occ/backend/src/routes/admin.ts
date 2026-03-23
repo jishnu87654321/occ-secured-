@@ -79,14 +79,14 @@ async function ensureManageableUserTarget(actor: NonNullable<Express.Request["us
   return target;
 }
 
-async function logAdminAction(adminId: string, actionType: string, targetType: string, targetId: string, metadata: Record<string, unknown> = {}) {
+async function logAdminAction(adminId: string, actionType: string, targetType: string, targetId: string, metadata: any = {}) {
   await prisma.adminActionLog.create({
     data: { adminId, actionType, targetType, targetId, metadata }
   });
 }
 
 router.get(
-  "/admin/dashboard",
+  "/occ-gate-842/dashboard",
   asyncHandler(async (_req, res) => {
     const [usersCount, clubsCount, postsCount, reportsCount, pendingReportsCount] = await Promise.all([
       prisma.user.count(),
@@ -103,7 +103,7 @@ router.get(
 );
 
 router.get(
-  "/admin/users",
+  "/occ-gate-842/users",
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const where = req.query.q
@@ -126,39 +126,44 @@ router.get(
       })
     ]);
 
-    return paginatedResponse(res, users.map(serializeUser), page, limit, total, "Admin users fetched successfully");
+    return paginatedResponse(res, users.map(u => serializeUser(u)), page, limit, total, "Admin users fetched successfully");
   })
 );
 
 router.get(
-  "/admin/users/:id",
+  "/occ-gate-842/users/:id",
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: { profile: true, settings: true, privacy: true }
     });
     if (!user) throw new HttpError(404, "User not found");
-    return successResponse(res, "Admin user fetched successfully", { user: serializeUser(user) });
+    return successResponse(res, "Admin user fetched successfully", { user: serializeUser(user as any) });
   })
 );
 
 router.patch(
-  "/admin/users/:id",
+  "/occ-gate-842/users/:id",
   validate(userPatchSchema),
   asyncHandler(async (req, res) => {
-    await ensureManageableUserTarget(req.user!, req.params.id);
+    await ensureManageableUserTarget(req.user!, req.params.id as string);
+    // P1 FIX: Explicit allowlist — never spread req.body into Prisma
+    const allowedData: any = {};
+    if (req.body.isActive !== undefined) allowedData.isActive = req.body.isActive;
+    if (req.body.status !== undefined) allowedData.status = req.body.status;
+
     const user = await prisma.user.update({
-      where: { id: req.params.id },
-      data: req.body,
+      where: { id: req.params.id as string },
+      data: allowedData,
       include: { profile: true, settings: true, privacy: true }
     });
-    await logAdminAction(req.user!.id, "USER_PATCHED", "USER", user.id, req.body);
-    return successResponse(res, "Admin user updated successfully", { user: serializeUser(user) });
+    await logAdminAction(req.user!.id, "USER_PATCHED", "USER", user.id, allowedData);
+    return successResponse(res, "Admin user updated successfully", { user: serializeUser(user as any) });
   })
 );
 
 router.patch(
-  "/admin/users/:id/status",
+  "/occ-gate-842/users/:id/status",
   validate(userStatusSchema),
   asyncHandler(async (req, res) => {
     await ensureManageableUserTarget(req.user!, req.params.id);
@@ -168,12 +173,12 @@ router.patch(
       include: { profile: true, settings: true, privacy: true }
     });
     await logAdminAction(req.user!.id, "USER_STATUS_UPDATED", "USER", user.id, req.body);
-    return successResponse(res, "User status updated successfully", { user: serializeUser(user) });
+    return successResponse(res, "Admin user status updated successfully", { user: serializeUser(user as any) });
   })
 );
 
 router.patch(
-  "/admin/users/:id/role",
+  "/occ-gate-842/users/:id/role",
   validate(userRoleSchema),
   asyncHandler(async (req, res) => {
     const target = await ensureManageableUserTarget(req.user!, req.params.id);
@@ -197,7 +202,7 @@ router.patch(
 );
 
 router.get(
-  "/admin/clubs",
+  "/occ-gate-842/clubs",
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const [total, clubs] = await Promise.all([
@@ -225,7 +230,7 @@ router.get(
 );
 
 router.post(
-  "/admin/clubs",
+  "/occ-gate-842/clubs",
   validate(adminClubCreateSchema),
   asyncHandler(async (req, res) => {
     const owner = await prisma.user.findFirst({
@@ -254,7 +259,7 @@ router.post(
 );
 
 router.patch(
-  "/admin/clubs/:id",
+  "/occ-gate-842/clubs/:id",
   validate(adminClubUpdateSchema),
   asyncHandler(async (req, res) => {
     const club = await prisma.club.update({
@@ -272,7 +277,7 @@ router.patch(
 );
 
 router.delete(
-  "/admin/clubs/:id",
+  "/occ-gate-842/clubs/:id",
   asyncHandler(async (req, res) => {
     await prisma.club.delete({ where: { id: req.params.id } });
     await logAdminAction(req.user!.id, "CLUB_DELETED", "CLUB", req.params.id, {});
@@ -281,7 +286,7 @@ router.delete(
 );
 
 router.get(
-  "/admin/posts",
+  "/occ-gate-842/posts",
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const where = {
@@ -320,7 +325,7 @@ router.get(
 );
 
 router.delete(
-  "/admin/posts/:id",
+  "/occ-gate-842/posts/:id",
   asyncHandler(async (req, res) => {
     await prisma.post.update({
       where: { id: req.params.id },
@@ -332,7 +337,7 @@ router.delete(
 );
 
 router.patch(
-  "/admin/posts/:id/moderation",
+  "/occ-gate-842/posts/:id/moderation",
   validate(z.object({ moderationStatus: z.enum(["PUBLISHED", "PENDING", "REJECTED", "REMOVED"]) })),
   asyncHandler(async (req, res) => {
     const post = await prisma.post.update({
@@ -356,7 +361,7 @@ router.patch(
 );
 
 router.get(
-  "/admin/reports",
+  "/occ-gate-842/reports",
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const where = req.query.status ? { status: req.query.status as any } : {};
@@ -379,7 +384,7 @@ router.get(
 );
 
 router.get(
-  "/admin/reports/:id",
+  "/occ-gate-842/reports/:id",
   asyncHandler(async (req, res) => {
     const report = await prisma.report.findUnique({
       where: { id: req.params.id },
@@ -395,7 +400,7 @@ router.get(
 );
 
 router.patch(
-  "/admin/reports/:id",
+  "/occ-gate-842/reports/:id",
   validate(reportSchema),
   asyncHandler(async (req, res) => {
     const report = await prisma.report.update({
@@ -412,7 +417,7 @@ router.patch(
 );
 
 router.get(
-  "/admin/categories",
+  "/occ-gate-842/categories",
   asyncHandler(async (_req, res) => {
     const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
     return successResponse(res, "Categories fetched successfully", { items: categories });
@@ -420,7 +425,7 @@ router.get(
 );
 
 router.post(
-  "/admin/categories",
+  "/occ-gate-842/categories",
   validate(categorySchema),
   asyncHandler(async (req, res) => {
     const category = await prisma.category.create({
@@ -432,7 +437,7 @@ router.post(
 );
 
 router.patch(
-  "/admin/categories/:id",
+  "/occ-gate-842/categories/:id",
   validate(categorySchema),
   asyncHandler(async (req, res) => {
     const category = await prisma.category.update({
@@ -445,7 +450,7 @@ router.patch(
 );
 
 router.delete(
-  "/admin/categories/:id",
+  "/occ-gate-842/categories/:id",
   asyncHandler(async (req, res) => {
     await prisma.category.delete({ where: { id: req.params.id } });
     await logAdminAction(req.user!.id, "CATEGORY_DELETED", "CATEGORY", req.params.id, {});

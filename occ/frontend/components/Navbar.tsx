@@ -8,14 +8,16 @@ import { useTransition } from "@/context/TransitionContext";
 import ImageWithFallback from "@/components/ImageWithFallback";
 
 export default function Navbar() {
-  const { user, logout, isLoggedIn } = useUser();
+  const { user, logout, isLoggedIn, isAuthLoading } = useUser();
   const { triggerTransition, isTransitioning } = useTransition();
   const isHydrated = useSyncExternalStore(
     () => () => undefined,
     () => true,
     () => false,
   );
-  const showAuthenticatedNav = isHydrated && isLoggedIn;
+  // Show authenticated nav if we are hydrated AND (logged in OR still loading auth state)
+  // This prevents the flicker to 'Login' button when we actually have a valid token
+  const showAuthenticatedNav = isHydrated && (isLoggedIn || isAuthLoading);
   const profileImageSrc = user?.profilePicture?.trim() || null;
 
   const handleLogout = () => {

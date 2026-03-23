@@ -16,7 +16,8 @@ function isOriginAllowed(origin: string) {
     return true;
   }
 
-  const isVercelPreview = /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+  // P3 FIX: Restrict Vercel previews to this project's deployments only (not all *.vercel.app)
+  const isVercelPreview = /^https:\/\/frontend-[a-z0-9]+-jishnus-projects[a-z0-9-]*\.vercel\.app$/i.test(origin);
   if (isVercelPreview && allowedOrigins.some((value) => value.endsWith(".vercel.app"))) {
     return true;
   }
@@ -35,8 +36,7 @@ export const corsOptions: CorsOptions = {
       callback(null, true);
       return;
     }
-
-    callback(new Error("CORS origin not allowed"));
+    callback(null, false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

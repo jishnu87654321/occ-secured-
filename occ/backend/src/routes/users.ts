@@ -90,7 +90,7 @@ router.get(
   optionalAuth,
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       include: {
         profile: true,
         settings: true,
@@ -126,19 +126,19 @@ router.get(
     }
 
     return successResponse(res, "Public user profile fetched successfully", {
-      user: serializeUser(user, isSelf || isAdmin ? "private" : "public"),
+      user: serializeUser(user as any, isSelf || isAdmin ? "private" : "public"),
       memberships:
         user.privacy?.showClubMembership === false
           ? []
-          : user.memberships.map((membership) => ({
+          : user.memberships.map((membership: any) => ({
               id: membership.id,
               membershipRole: membership.membershipRole,
               joinedAt: membership.joinedAt,
               club: serializeClub(membership.club, req.user?.id || null)
             })),
       stats: {
-        postCount: user._count.posts,
-        membershipCount: user._count.memberships
+        postCount: (user as any)._count.posts,
+        membershipCount: (user as any)._count.memberships
       }
     });
   })
@@ -150,10 +150,10 @@ router.get(
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
     const where = {
-      authorId: req.params.id,
+      authorId: req.params.id as string,
       deletedAt: null,
       moderationStatus: "PUBLISHED" as const,
-      ...(req.user?.id === req.params.id || ["PLATFORM_ADMIN", "SUPER_ADMIN"].includes(req.user?.role || "USER")
+      ...(req.user?.id === req.params.id as string || ["PLATFORM_ADMIN", "SUPER_ADMIN"].includes(req.user?.role || "USER")
         ? {}
         : {
             OR: [{ clubId: null, visibility: "PUBLIC" as const }, { visibility: "PUBLIC" as const, club: { is: { visibility: "PUBLIC" as const } } }]

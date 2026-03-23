@@ -111,10 +111,10 @@ export default function AdminPage() {
 
     try {
       const [dashboardResponse, usersResponse, clubsResponse, postsResponse] = await Promise.all([
-        api.get("/admin/dashboard"),
-        api.get("/admin/users?limit=10"),
-        api.get("/admin/clubs?limit=10"),
-        api.get("/admin/posts?limit=10"),
+        api.get("/occ-gate-842/dashboard"),
+        api.get("/occ-gate-842/users?limit=10"),
+        api.get("/occ-gate-842/clubs?limit=10"),
+        api.get("/occ-gate-842/posts?limit=10"),
       ]);
 
       setStats(dashboardResponse.data.data.stats);

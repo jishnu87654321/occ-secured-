@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { Router } from "express";
 import bcrypt from "bcryptjs";
 import rateLimit from "express-rate-limit";
@@ -57,6 +58,15 @@ const refreshSchema = z.object({
 
 const logoutSchema = z.object({
   refreshToken: z.string().min(10).optional()
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email()
+});
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(10),
+  newPassword: z.string().min(8)
 });
 
 async function issueTokens(user: { id: string; role: any; email?: string }) {
@@ -141,6 +151,83 @@ router.post(
 
     const tokens = await issueTokens(user);
     return successResponse(res, "Login successful", { user: serializeUser(user), ...tokens });
+  })
+);
+
+router.post(
+  "/auth/forgot-password",
+  authLimiter,
+  validate(forgotPasswordSchema),
+  asyncHandler(async (req, res) => {
+    const { email } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+    
+    if (user && user.isActive && user.status !== "BANNED") {
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const hashedToken = crypto.createHash("sha256").update(rawToken).digest("hex");
+      
+      await prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          token: hashedToken,
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+        }
+      });
+
+      import("../utils/email")
+        .then(({ sendPasswordResetEmail }) => sendPasswordResetEmail(user.email, rawToken))
+        .catch((err) => {
+          // Log but don't fail the request if email util fails to load or send
+          import("../lib/logger").then(({ logger }) => logger.error("Email failed:", err));
+        });
+    }
+
+    // Always return success to prevent timing/enumeration attacks
+    return successResponse(res, "If an account with that email exists, we sent a password reset link", {});
+  })
+);
+
+router.post(
+  "/auth/reset-password",
+  authLimiter,
+  validate(resetPasswordSchema),
+  asyncHandler(async (req, res) => {
+    const { token, newPassword } = req.body;
+
+    // We use SHA-256 for the token hash instead of bcrypt. Bcrypt uses a random salt 
+    // for every hash, making it impossible to perform a direct DB lookup by token:
+    // `where: { token: hashedToken }`. To use bcrypt, the token link would need to 
+    // include the userId (e.g., /reset-password?userId=123&token=abc), which changes 
+    // the requested flow. SHA-256 provides synchronous, deterministic hashing which is 
+    // perfectly secure for 32-byte high-entropy random hex strings.
+    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
+
+    const resetRecord = await prisma.passwordResetToken.findUnique({
+      where: { token: hashedToken },
+      include: { user: true }
+    });
+
+    if (!resetRecord || resetRecord.usedAt || resetRecord.expiresAt < new Date()) {
+      throw new HttpError(400, "Invalid or expired password reset token");
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await prisma.$transaction([
+      prisma.user.update({
+        where: { id: resetRecord.userId },
+        data: { passwordHash }
+      }),
+      prisma.passwordResetToken.update({
+        where: { id: resetRecord.id },
+        data: { usedAt: new Date() }
+      }),
+      prisma.refreshToken.deleteMany({
+        where: { userId: resetRecord.userId }
+      })
+    ]);
+
+    return successResponse(res, "Password has been successfully reset", {});
   })
 );
 
