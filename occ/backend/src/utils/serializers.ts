@@ -15,8 +15,8 @@ import { normalizeUrl } from "./fileUrl";
 
 type UserWithRelations = User & {
   profile: Profile | null;
-  settings: UserSetting | null;
-  privacy: PrivacySetting | null;
+  settings?: UserSetting | null;
+  privacy?: PrivacySetting | null;
 };
 
 type ClubWithRelations = Club & {

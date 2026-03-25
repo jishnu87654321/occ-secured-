@@ -189,7 +189,6 @@ function HowEarningWorksSection() {
 
 export default function GigsPageContent() {
   const [gigs, setGigs] = useState<GigSummary[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
@@ -198,11 +197,6 @@ export default function GigsPageContent() {
       .then((items) => {
         if (!active) return;
         setGigs(items);
-      })
-      .finally(() => {
-        if (active) {
-          setIsLoading(false);
-        }
       });
 
     return () => {
@@ -231,24 +225,15 @@ export default function GigsPageContent() {
           </p>
         </section>
 
-        {isLoading ? (
-          <div className="relative">
-            <div className="absolute inset-x-3 bottom-[-14px] top-3 bg-[#5964ff]/35" aria-hidden="true" />
-            <div className="relative border-[5px] border-black bg-white p-10 shadow-[10px_10px_0_0_#000]">
-              <p className="text-3xl font-black uppercase tracking-tighter">Loading gigs...</p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid gap-10 xl:grid-cols-2">
-            {opportunityCatalog.map((card) => (
-              <GigOpportunityCard
-                key={card.slug}
-                card={card}
-                gig={gigsBySlug.get(card.slug)}
-              />
-            ))}
-          </div>
-        )}
+        <div className="grid gap-10 xl:grid-cols-2">
+          {opportunityCatalog.map((card) => (
+            <GigOpportunityCard
+              key={card.slug}
+              card={card}
+              gig={gigsBySlug.get(card.slug)}
+            />
+          ))}
+        </div>
 
         <HowEarningWorksSection />
 

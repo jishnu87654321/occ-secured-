@@ -94,7 +94,7 @@ router.use(requireAuth, requireAdmin);
 async function ensureManageableUserTarget(actor: NonNullable<Express.Request["user"]>, targetUserId: string) {
   const target = await prisma.user.findUnique({
     where: { id: targetUserId },
-    include: { profile: true, settings: true, privacy: true }
+    include: { profile: true }
   });
 
   if (!target) {
@@ -161,7 +161,7 @@ router.get(
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        include: { profile: true, settings: true, privacy: true }
+        include: { profile: true }
       })
     ]);
 
@@ -174,7 +174,7 @@ router.get(
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id as string },
-      include: { profile: true, settings: true, privacy: true }
+      include: { profile: true }
     });
     if (!user) throw new HttpError(404, "User not found");
     return successResponse(res, "Admin user fetched successfully", { user: serializeUser(user as any) });
@@ -194,7 +194,7 @@ router.patch(
     const user = await prisma.user.update({
       where: { id: req.params.id as string },
       data: allowedData,
-      include: { profile: true, settings: true, privacy: true }
+      include: { profile: true }
     });
     await logAdminAction(req.user!.id, "USER_PATCHED", "USER", user.id, allowedData);
     return successResponse(res, "Admin user updated successfully", { user: serializeUser(user as any) });
@@ -209,7 +209,7 @@ router.patch(
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: { status: req.body.status, isActive: req.body.status === "ACTIVE" },
-      include: { profile: true, settings: true, privacy: true }
+      include: { profile: true }
     });
     await logAdminAction(req.user!.id, "USER_STATUS_UPDATED", "USER", user.id, req.body);
     return successResponse(res, "Admin user status updated successfully", { user: serializeUser(user as any) });
@@ -233,7 +233,7 @@ router.patch(
     const user = await prisma.user.update({
       where: { id: req.params.id },
       data: { role: req.body.role },
-      include: { profile: true, settings: true, privacy: true }
+      include: { profile: true }
     });
     await logAdminAction(req.user!.id, "USER_ROLE_UPDATED", "USER", user.id, req.body);
     return successResponse(res, "User role updated successfully", { user: serializeUser(user) });
@@ -252,7 +252,7 @@ router.get(
         orderBy: { createdAt: "desc" },
         include: {
           category: true,
-          owner: { include: { profile: true, settings: true, privacy: true } },
+          owner: { include: { profile: true } },
           _count: { select: { members: true, posts: true, joinRequests: true } }
         }
       })
@@ -292,7 +292,7 @@ router.post(
       },
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
         _count: { select: { members: true, posts: true, joinRequests: true } }
       }
     });
@@ -326,7 +326,7 @@ router.patch(
       data: req.body,
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
         _count: { select: { members: true, posts: true, joinRequests: true } }
       }
     });
@@ -358,20 +358,8 @@ router.get(
         orderBy: [{ approvalStatus: "asc" }, { createdAt: "desc" }],
         include: {
           category: true,
-          owner: {
-            include: {
-              profile: true,
-              settings: true,
-              privacy: true
-            }
-          },
-          reviewedByAdmin: {
-            include: {
-              profile: true,
-              settings: true,
-              privacy: true
-            }
-          },
+          owner: { include: { profile: true } },
+          reviewedByAdmin: { include: { profile: true } },
           _count: { select: { members: true, posts: true, joinRequests: true } }
         }
       }),
@@ -428,7 +416,7 @@ router.post(
       },
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
         _count: { select: { members: true, posts: true, joinRequests: true } }
       }
     });
@@ -462,7 +450,7 @@ router.put(
       data: req.body,
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
         _count: { select: { members: true, posts: true, joinRequests: true } }
       }
     });
@@ -479,8 +467,8 @@ router.patch(
       where: { id: req.params.id },
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
-        reviewedByAdmin: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
+        reviewedByAdmin: { include: { profile: true } },
         _count: { select: { members: true, posts: true, joinRequests: true } }
       }
     });
@@ -501,8 +489,8 @@ router.patch(
       },
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
-        reviewedByAdmin: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
+        reviewedByAdmin: { include: { profile: true } },
         _count: { select: { members: true, posts: true, joinRequests: true } }
       }
     });
@@ -788,8 +776,8 @@ router.patch(
       },
       include: {
         gig: true,
-        user: { include: { profile: true, settings: true, privacy: true } },
-        reviewedByAdmin: { include: { profile: true, settings: true, privacy: true } }
+        user: { include: { profile: true } },
+        reviewedByAdmin: { include: { profile: true } }
       }
     });
 
@@ -820,11 +808,11 @@ router.get(
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          author: { include: { profile: true, settings: true, privacy: true } },
+          author: { include: { profile: true } },
           club: {
             include: {
               category: true,
-              owner: { include: { profile: true, settings: true, privacy: true } },
+              owner: { include: { profile: true } },
               _count: { select: { members: true, posts: true, joinRequests: true } }
             }
           },
@@ -863,11 +851,11 @@ router.patch(
       where: { id: req.params.id },
       data: { moderationStatus: req.body.moderationStatus },
       include: {
-        author: { include: { profile: true, settings: true, privacy: true } },
+        author: { include: { profile: true } },
         club: {
           include: {
             category: true,
-            owner: { include: { profile: true, settings: true, privacy: true } },
+            owner: { include: { profile: true } },
             _count: { select: { members: true, posts: true, joinRequests: true } }
           }
         },
@@ -893,8 +881,8 @@ router.get(
         orderBy: { createdAt: "desc" },
         include: {
           post: true,
-          reporter: { include: { profile: true, settings: true, privacy: true } },
-          reviewedByAdmin: { include: { profile: true, settings: true, privacy: true } }
+          reporter: { include: { profile: true } },
+          reviewedByAdmin: { include: { profile: true } }
         }
       })
     ]);
@@ -909,8 +897,8 @@ router.get(
       where: { id: req.params.id },
       include: {
         post: true,
-        reporter: { include: { profile: true, settings: true, privacy: true } },
-        reviewedByAdmin: { include: { profile: true, settings: true, privacy: true } }
+        reporter: { include: { profile: true } },
+        reviewedByAdmin: { include: { profile: true } }
       }
     });
     if (!report) throw new HttpError(404, "Report not found");

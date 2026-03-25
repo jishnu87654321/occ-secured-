@@ -1,5 +1,6 @@
 import api from "@/lib/api";
 import type { ClubRecord } from "@/lib/mockData/clubs";
+import { clearRequestCache, withRequestCache } from "@/lib/requestCache";
 
 export const CLUB_IMAGE_TYPES = [
   "image/png",
@@ -185,8 +186,14 @@ function buildClubFormData(input: ClubUpsertInput) {
 }
 
 export async function listClubsFromApi() {
-  const response = await api.get<ListClubsResponse>("/clubs");
-  return response.data?.data?.items ?? [];
+  return withRequestCache(
+    "clubs:public",
+    async () => {
+      const response = await api.get<ListClubsResponse>("/clubs");
+      return response.data?.data?.items ?? [];
+    },
+    60_000,
+  );
 }
 
 export async function joinClubOnApi(clubId: string) {
@@ -207,6 +214,7 @@ export async function createClubOnApi(input: ClubUpsertInput) {
   if (!club) {
     throw new Error("Club response did not include a club record.");
   }
+  clearRequestCache("clubs:");
   return toClubRecord(club, input.category);
 }
 
@@ -216,16 +224,23 @@ export async function updateClubOnApi(clubId: string, input: ClubUpsertInput) {
   if (!club) {
     throw new Error("Club response did not include a club record.");
   }
+  clearRequestCache("clubs:");
   return toClubRecord(club, input.category);
 }
 
 export async function fetchClubFromApi(clubIdOrSlug: string) {
-  const response = await api.get<SingleClubResponse>(`/clubs/${clubIdOrSlug}`);
-  const club = response.data?.data?.club;
-  if (!club) {
-    throw new Error("Club response did not include a club record.");
-  }
-  return toClubRecord(club);
+  return withRequestCache(
+    `clubs:detail:${clubIdOrSlug}`,
+    async () => {
+      const response = await api.get<SingleClubResponse>(`/clubs/${clubIdOrSlug}`);
+      const club = response.data?.data?.club;
+      if (!club) {
+        throw new Error("Club response did not include a club record.");
+      }
+      return toClubRecord(club);
+    },
+    60_000,
+  );
 }
 
 type AdminClubsResponse = {
@@ -259,5 +274,6 @@ export async function updateClubApprovalStatus(
   if (!club) {
     throw new Error("Club response did not include a club record.");
   }
+  clearRequestCache("clubs:");
   return toClubRecord(club) as AdminClubRecord;
 }

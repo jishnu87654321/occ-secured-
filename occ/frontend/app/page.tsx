@@ -2,13 +2,46 @@
 
 import { Zap, Users, TrendingUp } from "lucide-react";
 import Link from "next/link";
-import PostCard from "@/components/PostCard";
 import InteractiveGrid from "@/components/InteractiveGrid";
 import EnhancedHero from "@/components/EnhancedHero";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useState } from "react";
 import { type Post } from "@/lib/dataProvider";
 import { listFeedFromApi } from "@/lib/postApi";
 import SiteContainer from "@/components/SiteContainer";
+
+const HomeFeedPreviewCard = memo(function HomeFeedPreviewCard({ post }: { post: Post }) {
+  return (
+    <article className="border-4 border-black bg-white p-8 shadow-[8px_8px_0_0_#000]">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <span className="inline-block border-2 border-black bg-black px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-white">
+            {post.clubName}
+          </span>
+          <p className="mt-3 text-xs font-black uppercase tracking-[0.16em] text-gray-500">
+            {post.author} • {post.timestamp}
+          </p>
+        </div>
+        <div className="flex items-center gap-3 text-xs font-black uppercase tracking-[0.16em] text-gray-500">
+          <span>{post.likes} likes</span>
+          <span>{post.commentsCount ?? 0} comments</span>
+        </div>
+      </div>
+
+      <p className="mt-5 line-clamp-4 border-l-4 border-brutal-blue pl-4 text-xl font-black uppercase leading-tight text-black">
+        {post.content}
+      </p>
+
+      <div className="mt-6">
+        <Link
+          href="/feeds"
+          className="inline-flex border-2 border-black bg-white px-4 py-3 text-sm font-black uppercase shadow-[4px_4px_0_0_#000] transition-all hover:translate-x-1 hover:translate-y-1 hover:shadow-none"
+        >
+          Open Full Feed
+        </Link>
+      </div>
+    </article>
+  );
+});
 
 export default function Home() {
   const [featuredPosts, setFeaturedPosts] = useState<Post[]>([]);
@@ -63,7 +96,7 @@ export default function Home() {
                   className="animate-fadeIn"
                   style={{ animationDelay: `${180 + index * 90}ms`, animationFillMode: "both" }}
                 >
-                  <PostCard post={post} />
+                  <HomeFeedPreviewCard post={post} />
                 </div>
               ))
             ) : (

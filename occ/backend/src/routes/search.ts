@@ -89,7 +89,7 @@ router.get(
         orderBy: { createdAt: "desc" },
         include: {
           category: true,
-          owner: { include: { profile: true, settings: true, privacy: true } },
+          owner: { include: { profile: true } },
           members: req.user ? { where: { userId: req.user.id } } : undefined,
           _count: { select: { members: true, posts: true, joinRequests: true } }
         }
@@ -100,11 +100,11 @@ router.get(
         take: 5,
         orderBy: { createdAt: "desc" },
         include: {
-          author: { include: { profile: true, settings: true, privacy: true } },
+          author: { include: { profile: true } },
           club: {
             include: {
               category: true,
-              owner: { include: { profile: true, settings: true, privacy: true } },
+              owner: { include: { profile: true } },
               members: req.user ? { where: { userId: req.user.id } } : undefined,
               _count: { select: { members: true, posts: true, joinRequests: true } }
             }
@@ -155,7 +155,7 @@ router.get(
         take: limit,
         include: {
           category: true,
-          owner: { include: { profile: true, settings: true, privacy: true } },
+          owner: { include: { profile: true } },
           members: req.user ? { where: { userId: req.user.id } } : undefined,
           _count: { select: { members: true, posts: true, joinRequests: true } }
         }
@@ -191,11 +191,11 @@ router.get(
         take: limit,
         orderBy: { createdAt: "desc" },
         include: {
-          author: { include: { profile: true, settings: true, privacy: true } },
+          author: { include: { profile: true } },
           club: {
             include: {
               category: true,
-              owner: { include: { profile: true, settings: true, privacy: true } },
+              owner: { include: { profile: true } },
               members: req.user ? { where: { userId: req.user.id } } : undefined,
               _count: { select: { members: true, posts: true, joinRequests: true } }
             }

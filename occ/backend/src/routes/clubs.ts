@@ -158,7 +158,7 @@ router.get(
         orderBy: { createdAt: "desc" },
         include: {
           category: true,
-          owner: { include: { profile: true, settings: true, privacy: true } },
+          owner: { include: { profile: true } },
           members: req.user ? { where: { userId: req.user.id } } : undefined,
           joinRequests: req.user ? { where: { userId: req.user.id } } : undefined,
           _count: { select: { members: true, posts: true, joinRequests: true } }
@@ -217,7 +217,7 @@ router.post(
       },
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
         members: { where: { userId: req.user!.id } },
         joinRequests: { where: { userId: req.user!.id } },
         _count: { select: { members: true, posts: true, joinRequests: true } }
@@ -238,7 +238,7 @@ router.get(
       },
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
         members: req.user ? { where: { userId: req.user.id } } : undefined,
         joinRequests: req.user ? { where: { userId: req.user.id } } : undefined,
         _count: { select: { members: true, posts: true, joinRequests: true } }
@@ -285,7 +285,7 @@ router.patch(
       },
       include: {
         category: true,
-        owner: { include: { profile: true, settings: true, privacy: true } },
+        owner: { include: { profile: true } },
         members: { where: { userId: req.user!.id } },
         joinRequests: { where: { userId: req.user!.id } },
         _count: { select: { members: true, posts: true, joinRequests: true } }
