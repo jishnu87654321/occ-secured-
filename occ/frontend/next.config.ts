@@ -4,8 +4,8 @@ import path from "path";
 const isVercelBuild = process.env.VERCEL === "1";
 
 const nextConfig: NextConfig = {
+  turbopack: {},
   poweredByHeader: false,
-  outputFileTracingRoot: path.join(__dirname, ".."),
   allowedDevOrigins: ["127.0.0.1", "localhost"],
   webpack: (config) => {
     config.resolve.fallback = {
@@ -22,6 +22,7 @@ const nextConfig: NextConfig = {
     ? {}
     : {
         output: "standalone" as const,
+        outputFileTracingRoot: path.join(__dirname, ".."),
       }),
 };
 
