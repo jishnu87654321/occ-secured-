@@ -5,8 +5,8 @@ services:
     rootDir: occ/backend
     plan: starter
     autoDeploy: true
-    buildCommand: npm run render:build
-    startCommand: npm run render:start
+    buildCommand: node scripts/prisma-command.js generate --schema prisma/schema.prisma && node node_modules/prisma/build/index.js db push --skip-generate --schema prisma/schema.prisma && node node_modules/typescript/bin/tsc -p tsconfig.json
+    startCommand: node dist/server.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV

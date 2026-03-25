@@ -4,6 +4,9 @@
   "private": true,
   "description": "OCC backend API",
   "main": "dist/server.js",
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
@@ -15,7 +18,7 @@
     "db:generate": "npm run prisma:generate",
     "db:migrate": "npm run prisma:deploy",
     "db:seed": "npm run prisma:seed",
-    "render:build": "npm ci && npm run prisma:generate && npm run prisma:deploy && npm run build",
+    "render:build": "node scripts/prisma-command.js generate --schema prisma/schema.prisma && node node_modules/prisma/build/index.js db push --skip-generate --schema prisma/schema.prisma && node node_modules/typescript/bin/tsc -p tsconfig.json",
     "render:start": "node dist/server.js",
     "lint": "tsc --noEmit",
     "test": "npm run build && node tests/run-tests.js",

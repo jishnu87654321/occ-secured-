@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+const isVercelBuild = process.env.VERCEL === "1";
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   outputFileTracingRoot: path.join(__dirname, ".."),
@@ -14,7 +16,13 @@ const nextConfig: NextConfig = {
     };
     return config;
   },
-  output: "standalone",
+  // Vercel already packages Next.js apps, so forcing standalone there can
+  // break manifest lookup in this nested repo layout.
+  ...(isVercelBuild
+    ? {}
+    : {
+        output: "standalone" as const,
+      }),
 };
 
 export default nextConfig;
