@@ -58,8 +58,17 @@ function baselineExistingDatabase() {
 }
 
 function extractMigrationName(output) {
-  const match = output.match(/Migration name:\s*([A-Za-z0-9_-]+)/);
-  return match ? match[1] : null;
+  const namedMatch = output.match(/Migration name:\s*([A-Za-z0-9_-]+)/);
+  if (namedMatch) {
+    return namedMatch[1];
+  }
+
+  const failedRecordMatch = output.match(/The `([A-Za-z0-9_-]+)` migration started at/);
+  if (failedRecordMatch) {
+    return failedRecordMatch[1];
+  }
+
+  return null;
 }
 
 function recoverFailedMigration(combinedOutput) {
@@ -91,8 +100,8 @@ const shouldFallback =
   combined.includes("No migration found in prisma/migrations");
 
 const shouldRecoverFailedMigration =
-  combined.includes("P3018") &&
-  combined.includes("Migration name:");
+  (combined.includes("P3018") && combined.includes("Migration name:")) ||
+  combined.includes("P3009");
 
 if (shouldRecoverFailedMigration) {
   const recoverStatus = recoverFailedMigration(combined);
