@@ -89,6 +89,83 @@ const moderationSchema = z.object({
   moderationStatus: z.enum(["PUBLISHED", "PENDING", "REJECTED", "REMOVED"])
 });
 
+function buildAdminUserWhere(query: any = {}) {
+  const clauses = [];
+  const q = String(query.q || "").trim();
+  const role = String(query.role || "").trim();
+  const status = String(query.status || "").trim();
+
+  if (q) {
+    clauses.push({
+      OR: [
+        { email: { contains: q, mode: "insensitive" } },
+        { profile: { is: { displayName: { contains: q, mode: "insensitive" } } } },
+        { profile: { is: { university: { contains: q, mode: "insensitive" } } } }
+      ]
+    });
+  }
+
+  if (role && role !== "ALL") {
+    clauses.push({ role });
+  }
+
+  if (status && status !== "ALL") {
+    clauses.push({ status });
+  }
+
+  return clauses.length > 0 ? { AND: clauses } : {};
+}
+
+function serializeAdminUserRecord(user: any) {
+  const joinedClubs = (user.memberships || [])
+    .filter((membership: any) => membership.club)
+    .map((membership: any) => ({
+      id: membership.club.id,
+      name: membership.club.name,
+      slug: membership.club.slug,
+      membershipRole: membership.membershipRole,
+      joinedAt: membership.joinedAt
+    }));
+
+  const ownedClubs = (user.clubsOwned || []).map((club: any) => ({
+    id: club.id,
+    name: club.name,
+    slug: club.slug,
+    approvalStatus: club.approvalStatus,
+    visibility: club.visibility,
+    isActive: club.isActive
+  }));
+
+  return {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    status: user.status,
+    isActive: user.isActive,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+    profile: user.profile
+      ? {
+          id: user.profile.id,
+          displayName: user.profile.displayName,
+          username: user.profile.displayName,
+          university: user.profile.university,
+          phoneNumber: user.profile.phoneNumber,
+          hobbies: user.profile.hobbies,
+          bio: user.profile.bio,
+          avatarUrl: user.profile.avatarUrl,
+          coverUrl: user.profile.coverUrl
+        }
+      : null,
+    membershipCount: user._count?.memberships ?? joinedClubs.length,
+    ownedClubsCount: user._count?.clubsOwned ?? ownedClubs.length,
+    postsCount: user._count?.posts ?? 0,
+    gigApplicationsCount: user._count?.gigApplications ?? 0,
+    joinedClubs,
+    ownedClubs
+  };
+}
+
 router.use(requireAuth, requireAdmin);
 
 const adminClubInclude = {
@@ -218,27 +295,70 @@ router.get(
   "/occ-gate-842/users",
   asyncHandler(async (req, res) => {
     const { page, limit, skip } = parsePagination(req.query as Record<string, unknown>);
-    const where = req.query.q
-      ? {
-          OR: [
-            { email: { contains: String(req.query.q), mode: "insensitive" as const } },
-            { profile: { is: { displayName: { contains: String(req.query.q), mode: "insensitive" as const } } } }
-          ]
-        }
-      : {};
+    const where = buildAdminUserWhere(req.query);
 
-    const [total, users] = await Promise.all([
+    const [total, users, activeUsers, adminUsers, membersWithClubs] = await Promise.all([
       prisma.user.count({ where }),
       prisma.user.findMany({
         where,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        include: { profile: true }
-      })
+        include: {
+          profile: true,
+          memberships: {
+            orderBy: { joinedAt: "desc" },
+            take: 5,
+            include: {
+              club: {
+                select: {
+                  id: true,
+                  name: true,
+                  slug: true
+                }
+              }
+            }
+          },
+          clubsOwned: {
+            orderBy: { createdAt: "desc" },
+            take: 3,
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              approvalStatus: true,
+              visibility: true,
+              isActive: true
+            }
+          },
+          _count: {
+            select: {
+              memberships: true,
+              clubsOwned: true,
+              posts: true,
+              gigApplications: true
+            }
+          }
+        }
+      }),
+      prisma.user.count({ where: { ...where, isActive: true, status: "ACTIVE" } }),
+      prisma.user.count({ where: { ...where, role: { in: ["PLATFORM_ADMIN", "SUPER_ADMIN"] } } }),
+      prisma.user.count({ where: { ...where, memberships: { some: {} } } })
     ]);
 
-    return paginatedResponse(res, users.map(u => serializeUser(u)), page, limit, total, "Admin users fetched successfully");
+    return successResponse(res, "Admin users fetched successfully", {
+      items: users.map((user) => serializeAdminUserRecord(user)),
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      summary: {
+        totalUsers: total,
+        activeUsers,
+        adminUsers,
+        membersWithClubs
+      }
+    });
   })
 );
 
@@ -247,10 +367,43 @@ router.get(
   asyncHandler(async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { id: req.params.id as string },
-      include: { profile: true }
+      include: {
+        profile: true,
+        memberships: {
+          orderBy: { joinedAt: "desc" },
+          include: {
+            club: {
+              select: {
+                id: true,
+                name: true,
+                slug: true
+              }
+            }
+          }
+        },
+        clubsOwned: {
+          orderBy: { createdAt: "desc" },
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            approvalStatus: true,
+            visibility: true,
+            isActive: true
+          }
+        },
+        _count: {
+          select: {
+            memberships: true,
+            clubsOwned: true,
+            posts: true,
+            gigApplications: true
+          }
+        }
+      }
     });
     if (!user) throw new HttpError(404, "User not found");
-    return successResponse(res, "Admin user fetched successfully", { user: serializeUser(user as any) });
+    return successResponse(res, "Admin user fetched successfully", { user: serializeAdminUserRecord(user) });
   })
 );
 

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, BriefcaseBusiness, CheckCircle2, CirclePlus, Clock3, LogOut, RefreshCw, Shield, Users, XCircle } from "lucide-react";
 import api from "@/lib/api";
 import { useUser } from "@/context/UserContext";
+import Link from "next/link";
 import {
   listAdminClubs,
   updateClubApprovalStatus,
@@ -477,6 +478,9 @@ export default function AdminPage() {
               <span className="border-2 border-black bg-brutal-gray px-3 py-2 text-xs font-black uppercase tracking-[0.18em]">Admin: {user?.email}</span>
               <span className="border-2 border-black bg-brutal-gray px-3 py-2 text-xs font-black uppercase tracking-[0.18em]">Pending Reviews: {summary.pending}</span>
               <span className="border-2 border-black bg-brutal-gray px-3 py-2 text-xs font-black uppercase tracking-[0.18em]">Last Sync: {lastUpdatedAt ? new Date(lastUpdatedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "Loading"}</span>
+              <Link href="/occ-gate-842/members" className="border-2 border-black bg-white px-3 py-2 text-xs font-black uppercase tracking-[0.18em] shadow-[3px_3px_0_0_#000]">
+                View Members
+              </Link>
             </div>
           </div>
 
