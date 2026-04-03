@@ -62,7 +62,7 @@ function ensureBackupDir() {
 async function writeBackup(data) {
   const backupDir = ensureBackupDir();
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const backupPath = path.join(backupDir, `railway-backup-${timestamp}.json`);
+  const backupPath = path.join(backupDir, `db-backup-${timestamp}.json`);
   fs.writeFileSync(backupPath, JSON.stringify(data, null, 2), "utf8");
   return backupPath;
 }
